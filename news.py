@@ -4,7 +4,7 @@ from aiohttp import ClientSession
 from aiohttp import web
 from bs4 import BeautifulSoup
 from aiohttp.web_request import Request
-
+import trafaret as t
 
 URL = 'https://www.bbc.com/'
 TEG = 'a'
@@ -20,16 +20,31 @@ routes = web.RouteTableDef()
 
 
 @routes.get('/')
-async def hello(request: Request):
-    raise web.HTTPFound('/sport&5')
-
-
-@routes.get('/{chapter}&{news}')
 async def get_chapters(request: Request):
     async with ClientSession() as session:
-        chapter = request.match_info['chapter']
-        end = int(request.match_info['news'])
+        tmp = t.Dict({'limit': t.String})
+       # tmp = t.Dict({t.String: t.})
+        params = {item[0]: item[1] for item in request.query.items()}
+        converter = t.Dict({
+            t.Key('chapter', default= 'news') >> 'chapter': t.String,
+            t.Key('limit' , default= 1000) >> 'limit': t.Int,})
+       # tmp.check(params)
 
+        print(converter)
+        print(params)
+
+
+
+        try:
+            params = converter.check(params)
+
+
+
+        #except (KeyError, ValueError) as e:
+        except (t.DataError) as e:
+            return web.Response(text=str(t.extract_error(converter,params)))
+        chapter = params['chapter']
+        end = int(params['limit'])
         html = await fetch(session, URL + chapter)
         bs_obj = BeautifulSoup(html, features="html.parser")
 
